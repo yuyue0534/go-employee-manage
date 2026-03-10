@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>员工管理系统 API 测试台</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background:#f5f7fb; }
+    .sidebar {
+      min-height: 100vh;
+      background: linear-gradient(180deg, #ffffff 0%, #eef4ff 100%);
+      border-right: 1px solid #dee2e6;
+      position: sticky; top: 0;
+    }
+    .brand { font-weight:700; color:#0d6efd; }
+    .nav-link { color:#334155; border-radius: .75rem; }
+    .nav-link.active, .nav-link:hover { background:#e7f1ff; color:#0d6efd; }
+    .panel-card { border:0; border-radius:1rem; box-shadow:0 6px 20px rgba(16,24,40,.06); }
+    .result-box {
+      background:#0b1020; color:#dbeafe; border-radius: .75rem;
+      padding: 1rem; min-height: 180px; white-space: pre-wrap; overflow:auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: .9rem;
+    }
+    .small-label { font-size: .82rem; color:#64748b; }
+    .section-anchor { scroll-margin-top: 16px; }
+    textarea.form-control { min-height: 120px; }
+    .status-pill { font-weight:600; }
+  </style>
+</head>
+<body>
+<div class="container-fluid">
+  <div class="row">
+    <aside class="col-12 col-md-3 col-xl-2 p-3 sidebar">
+      <div class="brand fs-4 mb-3">员工管理系统</div>
+      <div class="mb-3">
+        <label class="form-label">Base URL</label>
+        <input id="baseUrl" class="form-control" value="http://localhost:8080">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">默认 emp_no</label>
+        <input id="defaultEmpNo" class="form-control" value="10001">
+      </div>
+      <div class="mb-4">
+        <label class="form-label">默认 dept_no</label>
+        <input id="defaultDeptNo" class="form-control" value="d001">
+      </div>
+
+      <nav class="nav flex-column gap-1">
+        <a class="nav-link active" href="#health">Health</a>
+        <a class="nav-link" href="#employees">员工</a>
+        <a class="nav-link" href="#salaries">薪资</a>
+        <a class="nav-link" href="#titles">职位</a>
+        <a class="nav-link" href="#departments">部门</a>
+        <a class="nav-link" href="#globalResult">全局结果区</a>
+      </nav>
+    </aside>
+
+    <main class="col-12 col-md-9 col-xl-10 p-4">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h1 class="h3 mb-1">API 测试前端页面</h1>
+          <div class="text-secondary">覆盖测试文件中的所有接口，适合直接联调 Go + Supabase 服务</div>
+        </div>
+        <button class="btn btn-outline-primary" onclick="pingHealth()">快速 Health Check</button>
+      </div>
+
+      <section id="health" class="section-anchor mb-4">
+        <div class="card panel-card">
+          <div class="card-body">
+            <h2 class="h5 mb-3">Health</h2>
+            <button class="btn btn-primary" onclick="requestApi('GET', '/health')">GET /health</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="employees" class="section-anchor mb-4">
+        <div class="card panel-card">
+          <div class="card-body">
+            <h2 class="h5 mb-3">Employee - 员工</h2>
+
+            <div class="row g-3 mb-4">
+              <div class="col-md-2"><input id="empPage" class="form-control" value="1" placeholder="page"></div>
+              <div class="col-md-2"><input id="empSize" class="form-control" value="10" placeholder="size"></div>
+              <div class="col-md-2"><input id="empGender" class="form-control" placeholder="gender"></div>
+              <div class="col-md-3"><input id="empName" class="form-control" placeholder="name"></div>
+              <div class="col-md-3 d-grid"><button class="btn btn-primary" onclick="listEmployees()">员工列表 / 筛选 / 搜索</button></div>
+            </div>
+
+            <div class="row g-3 mb-4">
+              <div class="col-md-3"><input id="empDetailNo" class="form-control" value="10001" placeholder="emp_no"></div>
+              <div class="col-md-3 d-grid"><button class="btn btn-outline-primary" onclick="employeeDetail()">员工详情</button></div>
+              <div class="col-md-3 d-grid"><button class="btn btn-outline-secondary" onclick="requestApi('GET', '/api/v1/employees/99999')">不存在员工 404</button></div>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-lg-4">
+                <label class="form-label">新建员工</label>
+                <textarea id="createEmployeeBody" class="form-control">{
+  "birth_date": "1992-06-15",
+  "first_name": "Test",
+  "last_name": "User",
+  "gender": "M",
+  "hire_date": "2024-03-01"
+}</textarea>
+                <div class="d-grid mt-2"><button class="btn btn-success" onclick="postJson('/api/v1/employees','createEmployeeBody')">POST 新建员工</button></div>
+              </div>
+              <div class="col-lg-4">
+                <label class="form-label">非法 / 缺字段测试</label>
+                <textarea id="badEmployeeBody" class="form-control">{
+  "first_name": "Incomplete"
+}</textarea>
+                <div class="d-grid gap-2 mt-2">
+                  <button class="btn btn-warning" onclick="postJson('/api/v1/employees','badEmployeeBody')">POST 缺字段 400</button>
+                  <button class="btn btn-warning" onclick="postRaw('/api/v1/employees', `{
+  \"birth_date\": \"1992-06-15\",
+  \"first_name\": \"Bad\",
+  \"last_name\": \"Gender\",
+  \"gender\": \"X\",
+  \"hire_date\": \"2024-03-01\"
+}`)">POST gender 非法 400</button>
+                </div>
+              </div>
+              <div class="col-lg-4">
+                <label class="form-label">更新员工</label>
+                <textarea id="patchEmployeeBody" class="form-control">{
+  "first_name": "Georgi-Updated",
+  "hire_date": "1986-07-01"
+}</textarea>
+                <div class="input-group mt-2">
+                  <span class="input-group-text">emp_no</span>
+                  <input id="patchEmpNo" class="form-control" value="10001">
+                  <button class="btn btn-info text-white" onclick="patchEmployee()">PATCH 更新</button>
+                </div>
+                <div class="input-group mt-2">
+                  <span class="input-group-text">删除 emp_no</span>
+                  <input id="deleteEmpNo" class="form-control" value="10100">
+                  <button class="btn btn-danger" onclick="deleteEmployee()">DELETE 员工</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <section id="salaries" class="section-anchor mb-4">
+        <div class="card panel-card">
+          <div class="card-body">
+            <h2 class="h5 mb-3">Salary - 薪资</h2>
+            <div class="row g-3">
+              <div class="col-lg-4">
+                <div class="input-group mb-2">
+                  <span class="input-group-text">emp_no</span>
+                  <input id="salaryEmpNo" class="form-control" value="10001">
+                  <button class="btn btn-outline-primary" onclick="salaryHistory()">查看历史</button>
+                </div>
+                <textarea id="addSalaryBody" class="form-control">{
+  "amount": 92000,
+  "from_date": "2025-01-01",
+  "to_date": "9999-01-01"
+}</textarea>
+                <div class="d-grid gap-2 mt-2">
+                  <button class="btn btn-success" onclick="addSalary()">POST 新增薪资</button>
+                  <button class="btn btn-warning" onclick="postRaw(`/api/v1/employees/${getVal('salaryEmpNo')}/salaries`, `{
+  \"amount\": 0,
+  \"from_date\": \"2025-01-01\",
+  \"to_date\": \"9999-01-01\"
+}`)">POST amount=0 400</button>
+                </div>
+              </div>
+
+              <div class="col-lg-4">
+                <textarea id="patchSalaryBody" class="form-control">{
+  "amount": 96000
+}</textarea>
+                <div class="d-grid mt-2">
+                  <button class="btn btn-info text-white" onclick="patchCurrentSalary()">PATCH 当前生效薪资</button>
+                </div>
+              </div>
+
+              <div class="col-lg-4">
+                <div class="input-group mb-2">
+                  <span class="input-group-text">emp_no</span>
+                  <input id="delSalaryEmpNo" class="form-control" value="10001">
+                </div>
+                <div class="input-group mb-2">
+                  <span class="input-group-text">from_date</span>
+                  <input id="delSalaryDate" class="form-control" value="2025-01-01">
+                </div>
+                <div class="d-grid">
+                  <button class="btn btn-danger" onclick="deleteSalary()">DELETE 指定薪资</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="titles" class="section-anchor mb-4">
+        <div class="card panel-card">
+          <div class="card-body">
+            <h2 class="h5 mb-3">Title - 职位/头衔</h2>
+            <div class="row g-3">
+              <div class="col-lg-4">
+                <div class="input-group mb-2">
+                  <span class="input-group-text">emp_no</span>
+                  <input id="titleEmpNo" class="form-control" value="10001">
+                  <button class="btn btn-outline-primary" onclick="titleHistory()">查看职位历史</button>
+                </div>
+                <textarea id="addTitleBody" class="form-control">{
+  "title": "Principal Engineer",
+  "from_date": "2025-01-01",
+  "to_date": "9999-01-01"
+}</textarea>
+                <div class="d-grid mt-2">
+                  <button class="btn btn-success" onclick="addTitle()">POST 分配职位</button>
+                </div>
+              </div>
+              <div class="col-lg-4">
+                <div class="input-group mb-2">
+                  <span class="input-group-text">title</span>
+                  <input id="deleteTitleName" class="form-control" value="Principal Engineer">
+                </div>
+                <div class="input-group mb-2">
+                  <span class="input-group-text">from_date</span>
+                  <input id="deleteTitleDate" class="form-control" value="2025-01-01">
+                </div>
+                <div class="d-grid">
+                  <button class="btn btn-danger" onclick="deleteTitle()">DELETE 职位记录</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="departments" class="section-anchor mb-4">
+        <div class="card panel-card">
+          <div class="card-body">
+            <h2 class="h5 mb-3">Department - 部门</h2>
+
+            <div class="row g-3 mb-4">
+              <div class="col-md-3 d-grid"><button class="btn btn-primary" onclick="requestApi('GET','/api/v1/departments')">所有部门列表</button></div>
+              <div class="col-md-3"><input id="deptDetailNo" class="form-control" value="d001"></div>
+              <div class="col-md-3 d-grid"><button class="btn btn-outline-primary" onclick="departmentDetail()">部门详情</button></div>
+              <div class="col-md-3 d-grid"><button class="btn btn-outline-secondary" onclick="requestApi('GET','/api/v1/departments/d999')">不存在部门 404</button></div>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-lg-4">
+                <label class="form-label">新建部门</label>
+                <textarea id="createDeptBody" class="form-control">{
+  "dept_no": "d010",
+  "dept_name": "Data Engineering"
+}</textarea>
+                <div class="d-grid gap-2 mt-2">
+                  <button class="btn btn-success" onclick="postJson('/api/v1/departments','createDeptBody')">POST 新建部门</button>
+                  <button class="btn btn-warning" onclick="postRaw('/api/v1/departments', `{
+  \"dept_no\": \"d001\",
+  \"dept_name\": \"重复的部门\"
+}`)">POST 重复 dept_no 409</button>
+                </div>
+              </div>
+
+              <div class="col-lg-4">
+                <label class="form-label">更新部门名称</label>
+                <textarea id="patchDeptBody" class="form-control">{
+  "dept_name": "Data & AI Engineering"
+}</textarea>
+                <div class="input-group mt-2">
+                  <span class="input-group-text">dept_no</span>
+                  <input id="patchDeptNo" class="form-control" value="d010">
+                  <button class="btn btn-info text-white" onclick="patchDepartment()">PATCH 更新</button>
+                </div>
+                <div class="d-grid gap-2 mt-2">
+                  <button class="btn btn-outline-primary" onclick="departmentEmployees()">查看当前在职员工</button>
+                  <button class="btn btn-outline-primary" onclick="departmentManager()">查看当前经理</button>
+                </div>
+              </div>
+
+              <div class="col-lg-4">
+                <label class="form-label">指派 / 更换部门经理</label>
+                <textarea id="putManagerBody" class="form-control">{
+  "emp_no": 10001,
+  "from_date": "2024-01-01",
+  "to_date": "9999-01-01"
+}</textarea>
+                <div class="input-group mt-2">
+                  <span class="input-group-text">dept_no</span>
+                  <input id="managerDeptNo" class="form-control" value="d001">
+                  <button class="btn btn-success" onclick="putManager()">PUT 指派经理</button>
+                </div>
+                <div class="input-group mt-2">
+                  <span class="input-group-text">删除 dept_no</span>
+                  <input id="deleteDeptNo" class="form-control" value="d010">
+                  <button class="btn btn-danger" onclick="deleteDepartment()">DELETE 部门</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <section id="globalResult" class="section-anchor mb-4">
+        <div class="card panel-card">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h2 class="h5 mb-0">全局结果区</h2>
+              <button class="btn btn-sm btn-outline-secondary" onclick="clearResult()">清空</button>
+            </div>
+            <div class="row g-3 mb-3">
+              <div class="col-md-3"><div class="small-label">状态</div><div id="statusText" class="status-pill">尚未请求</div></div>
+              <div class="col-md-3"><div class="small-label">耗时</div><div id="elapsedText">-</div></div>
+              <div class="col-md-6"><div class="small-label">请求</div><div id="requestText">-</div></div>
+            </div>
+            <div class="small-label mb-1">响应内容</div>
+            <div id="resultBox" class="result-box">等待请求...</div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script>
+  function getVal(id) { return document.getElementById(id).value.trim(); }
+  function setResult(status, elapsed, req, payload) {
+    document.getElementById('statusText').textContent = status;
+    document.getElementById('elapsedText').textContent = elapsed;
+    document.getElementById('requestText').textContent = req;
+    document.getElementById('resultBox').textContent =
+      typeof payload === 'string' ? payload : JSON.stringify(payload, null, 2);
+  }
+  function clearResult() {
+    setResult('尚未请求', '-', '-', '等待请求...');
+  }
+  function buildUrl(path) {
+    return getVal('baseUrl').replace(/\/+$/,'') + path;
+  }
+  async function requestApi(method, path, body = null) {
+    const url = buildUrl(path);
+    const start = performance.now();
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: body ? {'Content-Type':'application/json'} : {},
+        body: body ? body : null
+      });
+      const elapsed = (performance.now() - start).toFixed(0) + ' ms';
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch { data = text; }
+      setResult(`${res.status} ${res.statusText}`, elapsed, `${method} ${path}`, data);
+      return {res, data};
+    } catch (err) {
+      setResult('请求失败', '-', `${method} ${path}`, String(err));
+    }
+  }
+
+  function postJson(path, textareaId) {
+    return requestApi('POST', path, document.getElementById(textareaId).value);
+  }
+  function postRaw(path, raw) {
+    return requestApi('POST', path, raw);
+  }
+  function pingHealth() { requestApi('GET', '/health'); }
+
+  function listEmployees() {
+    const p = new URLSearchParams();
+    if (getVal('empPage')) p.set('page', getVal('empPage'));
+    if (getVal('empSize')) p.set('size', getVal('empSize'));
+    if (getVal('empGender')) p.set('gender', getVal('empGender'));
+    if (getVal('empName')) p.set('name', getVal('empName'));
+    requestApi('GET', '/api/v1/employees?' + p.toString());
+  }
+  function employeeDetail() {
+    requestApi('GET', `/api/v1/employees/${getVal('empDetailNo')}`);
+  }
+  function patchEmployee() {
+    requestApi('PATCH', `/api/v1/employees/${getVal('patchEmpNo')}`, document.getElementById('patchEmployeeBody').value);
+  }
+  function deleteEmployee() {
+    const empNo = getVal('deleteEmpNo');
+    if (!confirm(`确认删除员工 ${empNo}？这可能级联删除薪资、职位、部门关联。`)) return;
+    requestApi('DELETE', `/api/v1/employees/${empNo}`);
+  }
+
+  function salaryHistory() {
+    requestApi('GET', `/api/v1/employees/${getVal('salaryEmpNo')}/salaries`);
+  }
+  function addSalary() {
+    requestApi('POST', `/api/v1/employees/${getVal('salaryEmpNo')}/salaries`, document.getElementById('addSalaryBody').value);
+  }
+  function patchCurrentSalary() {
+    requestApi('PATCH', `/api/v1/employees/${getVal('salaryEmpNo')}/salaries/current`, document.getElementById('patchSalaryBody').value);
+  }
+  function deleteSalary() {
+    const empNo = getVal('delSalaryEmpNo');
+    const fromDate = getVal('delSalaryDate');
+    if (!confirm(`确认删除薪资记录？emp_no=${empNo}, from_date=${fromDate}`)) return;
+    requestApi('DELETE', `/api/v1/employees/${empNo}/salaries/${fromDate}`);
+  }
+
+  function titleHistory() {
+    requestApi('GET', `/api/v1/employees/${getVal('titleEmpNo')}/titles`);
+  }
+  function addTitle() {
+    requestApi('POST', `/api/v1/employees/${getVal('titleEmpNo')}/titles`, document.getElementById('addTitleBody').value);
+  }
+  function deleteTitle() {
+    const empNo = getVal('titleEmpNo');
+    const title = encodeURIComponent(getVal('deleteTitleName'));
+    const fromDate = getVal('deleteTitleDate');
+    if (!confirm(`确认删除职位记录？emp_no=${empNo}, title=${decodeURIComponent(title)}, from_date=${fromDate}`)) return;
+    requestApi('DELETE', `/api/v1/employees/${empNo}/titles/${title}/${fromDate}`);
+  }
+
+  function departmentDetail() {
+    requestApi('GET', `/api/v1/departments/${getVal('deptDetailNo')}`);
+  }
+  function patchDepartment() {
+    requestApi('PATCH', `/api/v1/departments/${getVal('patchDeptNo')}`, document.getElementById('patchDeptBody').value);
+  }
+  function departmentEmployees() {
+    requestApi('GET', `/api/v1/departments/${getVal('patchDeptNo')}/employees`);
+  }
+  function departmentManager() {
+    requestApi('GET', `/api/v1/departments/${getVal('patchDeptNo')}/manager`);
+  }
+  function putManager() {
+    requestApi('PUT', `/api/v1/departments/${getVal('managerDeptNo')}/manager`, document.getElementById('putManagerBody').value);
+  }
+  function deleteDepartment() {
+    const deptNo = getVal('deleteDeptNo');
+    if (!confirm(`确认删除部门 ${deptNo}？这可能级联删除关联数据。`)) return;
+    requestApi('DELETE', `/api/v1/departments/${deptNo}`);
+  }
+
+  document.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', () => {
+      document.querySelectorAll('.nav-link').forEach(x => x.classList.remove('active'));
+      link.classList.add('active');
+    });
+  });
+
+  window.addEventListener('load', () => {
+    document.getElementById('empDetailNo').value = getVal('defaultEmpNo');
+    document.getElementById('patchEmpNo').value = getVal('defaultEmpNo');
+    document.getElementById('salaryEmpNo').value = getVal('defaultEmpNo');
+    document.getElementById('delSalaryEmpNo').value = getVal('defaultEmpNo');
+    document.getElementById('titleEmpNo').value = getVal('defaultEmpNo');
+    document.getElementById('deptDetailNo').value = getVal('defaultDeptNo');
+    document.getElementById('managerDeptNo').value = getVal('defaultDeptNo');
+  });
+</script>
+</body>
+</html>
