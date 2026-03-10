@@ -4,34 +4,6 @@
 
 ---
 
-## 目录结构
-
-```
-emp-api/
-├── cmd/
-│   └── main.go                   # 入口，依赖注入
-├── internal/
-│   ├── config/config.go          # 环境变量加载
-│   ├── db/db.go                  # pgxpool 连接池
-│   ├── handler/
-│   │   ├── router.go             # 路由注册
-│   │   ├── employee.go           # 员工接口
-│   │   ├── department.go         # 部门接口
-│   │   ├── salary.go             # 薪资接口
-│   │   └── title.go              # 职位接口
-│   ├── middleware/
-│   │   └── middleware.go         # 日志 & Recovery
-│   ├── model/model.go            # 所有数据结构 & 请求体
-│   ├── repository/               # 数据库操作层（SQL）
-│   └── service/service.go        # 业务逻辑层
-├── pkg/response/response.go      # 统一响应格式
-├── .env.example
-├── Dockerfile
-└── go.mod
-```
-
----
-
 ## 快速开始
 
 ### 1. 配置环境变量
@@ -55,7 +27,7 @@ GIN_MODE=debug
 
 ```bash
 go mod tidy
-go run ./cmd/main.go
+go run .
 ```
 
 ### 3. Docker 运行
